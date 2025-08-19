@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # API Service - Development overrides
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    volumes:
+      # Mount source code for development
+      - ./api:/app
+      - /app/.venv  # Exclude virtual environment
+    environment:
+      - PYTHONPATH=/app
+      - FASTAPI_ENV=development
+    command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    ports:
+      - "8000:8000"
+
+  # Web Service - Development overrides
+  web:
+    build:
+      context: ./web/my-react-app
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./web/my-react-app:/app
+      - /app/node_modules  # Exclude node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_API_URL=http://localhost:8000
+    command: ["npm", "start"]
+    ports:
+      - "3000:3000"
