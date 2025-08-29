@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: rag-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - API_KEY=${API_KEY:-dummy_api_key}
+    volumes:
+      # Mount knowledge base and vector database for persistence
+      - ./api/knowledge_base:/app/knowledge_base
+      - ./api/vector_db:/app/vector_db
+    networks:
+      - rag-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Web Service
+  web:
+    build:
+      context: ./web/my-react-app
+      dockerfile: Dockerfile
+    container_name: rag-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - rag-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  # Optional: Create named volumes for better data management
+  knowledge_base_data:
+  vector_db_data:

@@ -21,6 +21,10 @@ function ChatComponent() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // Ref for auto-scrolling to the latest message
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  // Chat context fields
+  const [company, setCompany] = useState('');
+  const [department, setDepartment] = useState('');
+  const [employee, setEmployee] = useState('');
 
   // Function to scroll to the bottom of the chat messages
   const scrollToBottom = () => {
@@ -35,30 +39,35 @@ function ChatComponent() {
     if (input.trim() === '') return; // Don't send empty messages
 
     const userMessage = input.trim();
-    // Add user message to history immediately
     setChatHistory(prevHistory => [...prevHistory, { sender: 'user', text: userMessage }]);
-    setInput(''); // Clear input field
-
-    setIsLoading(true); // Set loading state
+    setInput('');
+    setIsLoading(true);
 
     try {
       // Prepare the chat history format for the API
       const apiChatHistory = chatHistory.map(msg => [msg.sender === 'user' ? msg.text : '', msg.sender === 'ai' ? msg.text : '']);
-      // Append the current user message to the history being sent
-      const historyToSend = [...apiChatHistory, [userMessage, '']]; // Add the current user message without an AI response yet
+      const historyToSend = [...apiChatHistory, [userMessage, '']];
 
-      const response = await axios.post(API_URL, {
+      const payload: any = {
         question: userMessage,
-        chat_history: historyToSend.filter(pair => pair[0] !== '' || pair[1] !== '') // Filter out empty pairs
-      }, {
-        headers: {
-          'X-API-Key': API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
+        chat_history: historyToSend.filter(pair => pair[0] !== '' || pair[1] !== '')
+      };
+      if (company.trim()) payload.company = company.trim();
+      if (department.trim()) payload.department = department.trim();
+      if (employee.trim()) payload.employee = employee.trim();
 
-      // Update chat history with the AI's response and the full history from the backend
-      // The backend returns the full updated history, which is simpler to use
+      const response = await axios.post(
+        API_URL,
+        payload,
+        {
+          headers: {
+            'X-API-Key': API_KEY,
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+          },
+        }
+      );
+
       const updatedHistoryFromApi: [string, string][] = (response.data as { chat_history: [string, string][] }).chat_history;
       const newChatHistory: Message[] = updatedHistoryFromApi
         .map(([q, a]) => [
@@ -66,10 +75,8 @@ function ChatComponent() {
           a ? { sender: 'ai', text: a } : null
         ])
         .flat()
-        .filter((msg): msg is Message => !!msg); // Type guard to filter out nulls
-
+        .filter((msg): msg is Message => !!msg);
       setChatHistory(newChatHistory);
-
     } catch (error: any) {
       console.error('Error sending message:', error);
       let errorMessage = 'An error occurred while fetching the response.';
@@ -78,12 +85,9 @@ function ChatComponent() {
       } else if (error.request) {
         errorMessage = 'Error: No response received from the server.';
       }
-
-      // Add an error message to the chat history
       setChatHistory(prevHistory => [...prevHistory, { sender: 'ai', text: errorMessage }]);
-
     } finally {
-      setIsLoading(false); // Clear loading state
+      setIsLoading(false);
     }
   };
 
@@ -97,6 +101,29 @@ function ChatComponent() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', maxWidth: '800px', margin: 'auto', border: '1px solid #ccc', borderRadius: '8px' }}>
       <FileUploadComponent />
+      <div style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          placeholder="Company (optional for chat)"
+          value={company}
+          onChange={e => setCompany(e.target.value)}
+          disabled={isLoading}
+        />
+        <input
+          type="text"
+          placeholder="Department (optional)"
+          value={department}
+          onChange={e => setDepartment(e.target.value)}
+          disabled={isLoading}
+        />
+        <input
+          type="text"
+          placeholder="Employee (optional)"
+          value={employee}
+          onChange={e => setEmployee(e.target.value)}
+          disabled={isLoading}
+        />
+      </div>
       <h2 style={{ textAlign: 'center' }}>Chat with AI</h2>
       <div style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '10px', paddingRight: '10px' }}>
         {chatHistory.map((message, index) => (
@@ -146,7 +173,6 @@ function ChatComponent() {
           Send
         </button>
       </div>
-
     </div>
   );
 }
