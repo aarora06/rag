@@ -413,7 +413,7 @@ async def upload_document(
         # --- Load, Chunk, and Add to Vector Store ---
         # 1. Load the newly saved file
         loader = None
-        if file_location.lower().endswith('.md'):
+        if file_location.lower().endswith('.md') or file_location.lower().endswith('.txt'):
             loader = TextLoader(file_location, encoding='utf-8') # Reuse text_loader_kwargs logic
         elif file_location.lower().endswith('.pdf'):
             loader = PyPDFLoader(file_location)
